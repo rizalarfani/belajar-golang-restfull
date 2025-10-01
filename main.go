@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"rizalarfani/belajar-restful-api/app"
 	"rizalarfani/belajar-restful-api/controller"
@@ -34,10 +35,11 @@ func main() {
 	router.PanicHandler = exception.ErrorHandler
 
 	server := http.Server{
-		Addr:    "localhost:3000",
+		Addr:    ":3000",
 		Handler: middleware.NewAuthMiddleware(router),
 	}
 
+	log.Printf("starting HTTP server on %s", server.Addr)
 	err := server.ListenAndServe()
 	helper.PanicIfError(err)
 }
