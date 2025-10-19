@@ -7,33 +7,39 @@
 package main
 
 import (
-	"net/http"
-	"rizalarfani/belajar-restful-api/app"
-	"rizalarfani/belajar-restful-api/controller"
-	"rizalarfani/belajar-restful-api/middleware"
-	"rizalarfani/belajar-restful-api/repository"
-	"rizalarfani/belajar-restful-api/service"
-
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
 	"github.com/google/wire"
+	"rizalarfani/belajar-restful-api/app"
+	"rizalarfani/belajar-restful-api/controller"
+	"rizalarfani/belajar-restful-api/repository"
+	"rizalarfani/belajar-restful-api/routes"
+	"rizalarfani/belajar-restful-api/service"
+)
 
+import (
 	_ "github.com/go-sql-driver/mysql"
 )
 
 // Injectors from injector.go:
 
-func InitializedServer() *http.Server {
+func InitializedServer() *gin.Engine {
+	config := routes.NewRoutesConfig()
 	categoryRepositoryImpl := repository.NewCategoryRepository()
 	db := app.NewDB()
 	validate := validator.New()
 	categoryServiceImpl := service.NewCategoryService(categoryRepositoryImpl, db, validate)
 	categoryControllerImpl := controller.NewCategoryController(categoryServiceImpl)
-	router := app.NewRouter(categoryControllerImpl)
-	authMiddleware := middleware.NewAuthMiddleware(router)
-	server := NewServer(authMiddleware)
-	return server
+	routesRoutes := &routes.Routes{
+		Config:   config,
+		Category: categoryControllerImpl,
+	}
+	engine := app.NewRouter(routesRoutes)
+	return engine
 }
 
 // injector.go:
 
 var categorySet = wire.NewSet(repository.NewCategoryRepository, wire.Bind(new(repository.CategoryRepository), new(*repository.CategoryRepositoryImpl)), service.NewCategoryService, wire.Bind(new(service.CategoryService), new(*service.CategoryServiceImpl)), controller.NewCategoryController, wire.Bind(new(controller.CategoryController), new(*controller.CategoryControllerImpl)))
+
+var routerSet = wire.NewSet(routes.NewRoutesConfig, wire.Struct(new(routes.Routes), "*"))

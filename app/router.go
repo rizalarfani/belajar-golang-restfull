@@ -1,22 +1,41 @@
 package app
 
 import (
-	"rizalarfani/belajar-restful-api/controller"
+	"log"
+	"net/http"
 	"rizalarfani/belajar-restful-api/exception"
+	"rizalarfani/belajar-restful-api/helper"
+	"rizalarfani/belajar-restful-api/model/web"
+	"rizalarfani/belajar-restful-api/routes"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/gin-gonic/gin"
 )
 
-func NewRouter(categoryControler controller.CategoryController) *httprouter.Router {
-	router := httprouter.New()
+func NewRouter(reg *routes.Routes) *gin.Engine {
+	router := gin.Default()
+	router.Use(exception.ErrorHandler())
 
-	router.GET("/api/categories", categoryControler.FindAll)
-	router.GET("/api/categories/:categoryId", categoryControler.FindById)
-	router.POST("/api/categories", categoryControler.Create)
-	router.PUT("/api/categories/:categoryId", categoryControler.Update)
-	router.DELETE("/api/categories/:categoryId", categoryControler.Delete)
+	router.NoRoute(func(ctx *gin.Context) {
+		webResponse := web.WebResponse{
+			Code:   http.StatusNotFound,
+			Status: "Not FOUND",
+		}
+		helper.WriteToResponseBody(ctx.Writer, webResponse)
+	})
 
-	router.PanicHandler = exception.ErrorHandler
+	router.GET("/", func(ctx *gin.Context) {
+		webResponse := web.WebResponse{
+			Code:   http.StatusOK,
+			Status: "OK",
+			Data:   "Welcome to api with golang",
+		}
+		helper.WriteToResponseBody(ctx.Writer, webResponse)
+	})
 
+	if reg == nil {
+		log.Fatal("routes.Routes (reg) is nil in NewRouter (Wire tidak memprovide reg)")
+	}
+
+	reg.Mount(router)
 	return router
 }

@@ -4,16 +4,15 @@
 package main
 
 import (
-	"net/http"
 	"rizalarfani/belajar-restful-api/app"
 	"rizalarfani/belajar-restful-api/controller"
-	"rizalarfani/belajar-restful-api/middleware"
 	"rizalarfani/belajar-restful-api/repository"
+	"rizalarfani/belajar-restful-api/routes"
 	"rizalarfani/belajar-restful-api/service"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
 	"github.com/google/wire"
-	"github.com/julienschmidt/httprouter"
 )
 
 var categorySet = wire.NewSet(
@@ -25,15 +24,18 @@ var categorySet = wire.NewSet(
 	wire.Bind(new(controller.CategoryController), new(*controller.CategoryControllerImpl)),
 )
 
-func InitializedServer() *http.Server {
+var routerSet = wire.NewSet(
+	routes.NewRoutesConfig,
+	wire.Struct(new(routes.Routes), "*"),
+)
+
+func InitializedServer() *gin.Engine {
 	wire.Build(
 		app.NewDB,
 		validator.New,
 		categorySet,
+		routerSet,
 		app.NewRouter,
-		wire.Bind(new(http.Handler), new(*httprouter.Router)),
-		middleware.NewAuthMiddleware,
-		NewServer,
 	)
 	return nil
 }

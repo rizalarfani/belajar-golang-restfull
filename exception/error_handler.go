@@ -5,25 +5,46 @@ import (
 	"rizalarfani/belajar-restful-api/helper"
 	"rizalarfani/belajar-restful-api/model/web"
 
+	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
 )
 
-func ErrorHandler(writer http.ResponseWriter, request *http.Request, err interface{}) {
-	if notFoundError(writer, request, err) {
-		return
-	}
+func ErrorHandler() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		defer func() {
+			if r := recover(); r != nil {
+				// coba map ke 400
+				if validationError(c, r) {
+					c.Abort()
+					return
+				}
+				// coba map ke 404
+				if notFoundError(c, r) {
+					c.Abort()
+					return
+				}
+				// default → 500
+				internalServerError(c, r)
+				c.Abort()
+				return
+			}
+		}()
 
-	if validationError(writer, request, err) {
-		return
+		c.Next()
+
+		// Jika sudah ada response yang dikirim oleh handler sebelumnya, selesai.
+		if c.IsAborted() || len(c.Errors) == 0 {
+			return
+		}
+
 	}
-	internalServerError(writer, request, err)
 }
 
-func validationError(writer http.ResponseWriter, request *http.Request, err interface{}) bool {
+func validationError(c *gin.Context, err interface{}) bool {
 	exception, ok := err.(validator.ValidationErrors)
 	if ok {
-		writer.Header().Set("Content-Type", "application/json")
-		writer.WriteHeader(http.StatusBadRequest)
+		c.Writer.Header().Set("Content-Type", "application/json")
+		c.Writer.WriteHeader(http.StatusBadRequest)
 
 		webResponse := web.WebResponse{
 			Code:   http.StatusBadRequest,
@@ -31,18 +52,18 @@ func validationError(writer http.ResponseWriter, request *http.Request, err inte
 			Data:   exception.Error(),
 		}
 
-		helper.WriteToResponseBody(writer, webResponse)
+		helper.WriteToResponseBody(c.Writer, webResponse)
 		return true
 	} else {
 		return false
 	}
 }
 
-func notFoundError(writer http.ResponseWriter, request *http.Request, err interface{}) bool {
+func notFoundError(c *gin.Context, err interface{}) bool {
 	exception, ok := err.(NotFoundError)
 	if ok {
-		writer.Header().Set("Content-Type", "application/json")
-		writer.WriteHeader(http.StatusNotFound)
+		c.Writer.Header().Set("Content-Type", "application/json")
+		c.Writer.WriteHeader(http.StatusNotFound)
 
 		webResponse := web.WebResponse{
 			Code:   http.StatusNotFound,
@@ -50,16 +71,16 @@ func notFoundError(writer http.ResponseWriter, request *http.Request, err interf
 			Data:   exception.Error,
 		}
 
-		helper.WriteToResponseBody(writer, webResponse)
+		helper.WriteToResponseBody(c.Writer, webResponse)
 		return true
 	} else {
 		return false
 	}
 }
 
-func internalServerError(writer http.ResponseWriter, request *http.Request, err interface{}) {
-	writer.Header().Set("Content-Type", "application/json")
-	writer.WriteHeader(http.StatusInternalServerError)
+func internalServerError(c *gin.Context, err interface{}) {
+	c.Writer.Header().Set("Content-Type", "application/json")
+	c.Writer.WriteHeader(http.StatusInternalServerError)
 
 	webResponse := web.WebResponse{
 		Code:   http.StatusInternalServerError,
@@ -67,5 +88,5 @@ func internalServerError(writer http.ResponseWriter, request *http.Request, err 
 		Data:   err,
 	}
 
-	helper.WriteToResponseBody(writer, webResponse)
+	helper.WriteToResponseBody(c.Writer, webResponse)
 }
